@@ -18,7 +18,7 @@ cpp/x64/
 /conda_requirements.txt
 /generate_tree.py
 /pip_requirements.txt
-/requirements.txt
+#/requirements.txt
 .vs/
 /.history/
 
