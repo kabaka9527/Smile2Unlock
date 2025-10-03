@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Add msbuild to PATH
+      uses: microsoft/setup-msbuild@v1.1
+
+    - name: Build C++ project
+      run: msbuild cpp/SampleV2CredentialProvider.sln /p:Configuration=Release /p:Platform=x64
+
+    - name: Create release package
+      run: |
+        mkdir release
+        mkdir release/cpp
+        mkdir release/resources
+        mkdir release/src
+        copy cpp/x64/Release/SampleV2CredentialProvider.dll release/cpp/
+        copy cpp/register.reg release/cpp/
+        copy cpp/Unregister.reg release/cpp/
+        xcopy resources release/resources /E /I
+        xcopy src release/src /E /I
+        copy config.py release/
+        copy generate_db.py release/
+        copy LICENSE release/
+        copy Logger.py release/
+        copy login.py release/
+        copy README.md release/
+        copy smile2unlock_entry.py release/
+        Compress-Archive -Path release -DestinationPath Smile2Unlock.zip
+
+    - name: Create GitHub Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ github.run_number }}
+        release_name: Release v${{ github.run_number }}
+        draft: false
+        prerelease: false
+
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./Smile2Unlock.zip
+        asset_name: Smile2Unlock.zip
+        asset_content_type: application/zip
